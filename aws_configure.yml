@@ -7,58 +7,114 @@
     - ./answerfile.yml
   tasks:
     - name: Create Management AWS VPC
-      ec2_vpc:
+      ec2_vpc_net:
         aws_access_key: "{{ aws_access_key }}"
         aws_secret_key: "{{ aws_secret_key }}"
         region: "{{ mng_vpc_region }}"
         state:  present
+        name: "{{ mng_vpc_name }}"
         cidr_block: "{{ mng_vpc_cidr_block }}"
-        resource_tags: { "Name":"{{ mng_vpc_name }}-vpc", "Environment":"Management", "Project": "{{ project }}", "Student": "{{ student }}" }
-        subnets: "{{ mng_vpc_subnets }}" 
-        internet_gateway: yes
+        multi_ok: True
+        resource_tags: { "Name":"{{ mng_vpc_name }}", "Environment":"Management", "Project": "{{ project }}", "Student": "{{ student }}" }
       register: mngvpc
+    - name: Create Management VPC Mngmt subnet
+      ec2_vpc_subnet:
+        aws_access_key: "{{ aws_access_key }}"
+        aws_secret_key: "{{ aws_secret_key }}"
+        region: "{{ mng_vpc_region }}"
+        state: present
+        vpc_id: "{{ mngvpc.vpc.id }}"
+        cidr: "{{ mng_public_cidr_1 }}"
+        resource_tags: { "Name":"{{ mng_vpc_name }}-{{ mng_public_az_1 }}-mgmt_subnet", "Type":"Public", "Alias":"Management_Mgmt_Subnet", "Project": "{{ project }}", "Student": "{{ student }}" }
+      register: mngsubnet
+    - name: Create Management Internet Gateway
+      ec2_vpc_igw:
+        aws_access_key: "{{ aws_access_key }}"
+        aws_secret_key: "{{ aws_secret_key }}"
+        region: "{{ mng_vpc_region }}"
+        state: present
+        vpc_id: "{{ mngvpc.vpc.id }}"
+      register: mngigw
     - name: Tag the Management Internet Gateway
       ec2_tag:
         aws_access_key: "{{ aws_access_key }}"
         aws_secret_key: "{{ aws_secret_key }}"
-        resource: "{{ mngvpc.igw_id }}"
+        resource: "{{ mngigw.gateway_id }}"
         region: "{{ mng_vpc_region }}"
         state: present
         tags:
           Name: "{{ mng_vpc_name }}-igw"
           Project: "{{ project }}"
           Student: "{{ student }}"
-      register: mngigw
+      register: mngigwtag
     - name: Create Compute AWS VPC
-      ec2_vpc:
+      ec2_vpc_net:
         aws_access_key: "{{ aws_access_key }}"
         aws_secret_key: "{{ aws_secret_key }}"
         region: "{{ cmp_vpc_region }}"
         state:  present
+        name: "{{ cmp_vpc_name }}"
         cidr_block: "{{ cmp_vpc_cidr_block }}"
-        resource_tags: { "Name":"{{ cmp_vpc_name }}-vpc", "Environment":"Compute", "Project": "{{ project }}", "Student": "{{ student }}" }
-        subnets: "{{ cmp_vpc_subnets }}" 
-        internet_gateway: yes
+        multi_ok: True
+        resource_tags: { "Name":"{{ cmp_vpc_name }}", "Environment":"Compute", "Project": "{{ project }}", "Student": "{{ student }}" }
       register: cmpvpc
+    - name: Create Compute VPC Mngmt subnet
+      ec2_vpc_subnet:
+        aws_access_key: "{{ aws_access_key }}"
+        aws_secret_key: "{{ aws_secret_key }}"
+        region: "{{ cmp_vpc_region }}"
+        state: present
+        vpc_id: "{{ cmpvpc.vpc.id }}"
+        cidr: "{{ cmp_public_cidr_1 }}"
+        resource_tags: { "Name":"{{ cmp_vpc_name }}-{{ cmp_public_az_1 }}-mgmt_subnet", "Type":"Public", "Alias":"Compute_Mgmt_Subnet", "Project": "{{ project }}", "Student": "{{ student }}" }
+      register: cmpmgmtsubnet
+    - name: Create Compute VPC Uplink subnet
+      ec2_vpc_subnet:
+        aws_access_key: "{{ aws_access_key }}"
+        aws_secret_key: "{{ aws_secret_key }}"
+        region: "{{ cmp_vpc_region }}"
+        state: present
+        vpc_id: "{{ cmpvpc.vpc.id }}"
+        cidr: "{{ cmp_private_cidr_1 }}"
+        resource_tags: { "Name":"{{ cmp_vpc_name }}-{{ cmp_private_az_1 }}-uplink-subnet", "Type":"Private", "Alias":"Compute_Uplink_Subnet", "Project": "{{ project }}", "Student": "{{ student }}" }
+      register: cmpuplinksubnet
+    - name: Create Compute VPC Downlink subnet
+      ec2_vpc_subnet:
+        aws_access_key: "{{ aws_access_key }}"
+        aws_secret_key: "{{ aws_secret_key }}"
+        region: "{{ cmp_vpc_region }}"
+        state: present
+        vpc_id: "{{ cmpvpc.vpc.id }}"
+        cidr: "{{ cmp_private_cidr_2 }}"
+        resource_tags: { "Name":"{{ cmp_vpc_name }}-{{ cmp_private_az_2 }}-downlink-subnet", "Type":"Public", "Alias":"Compute_Downlink_Subnet", "Project": "{{ project }}", "Student": "{{ student }}" }
+      register: cmpdownlinksubnet
+    - name: Create Compute Internet Gateway
+      ec2_vpc_igw:
+        aws_access_key: "{{ aws_access_key }}"
+        aws_secret_key: "{{ aws_secret_key }}"
+        region: "{{ cmp_vpc_region }}"
+        state: present
+        vpc_id: "{{ cmpvpc.vpc.id }}"
+      register: cmpigw
     - name: Tag the Compute Internet Gateway
       ec2_tag:
         aws_access_key: "{{ aws_access_key }}"
         aws_secret_key: "{{ aws_secret_key }}"
-        resource: "{{ cmpvpc.igw_id }}"
+        resource: "{{ cmpigw.gateway_id }}"
         region: "{{ cmp_vpc_region }}"
         state: present
         tags:
           Name: "{{ cmp_vpc_name }}-igw"
           Project: "{{ project }}"
           Student: "{{ student }}"
-      register: cmpigw
+      register: cmpigwtag
     - name: Create VPC Peering Connection
       ec2_vpc_peer:
         aws_access_key: "{{ aws_access_key }}"
         aws_secret_key: "{{ aws_secret_key }}"
         region: "{{ mng_vpc_region }}"
-        vpc_id: "{{ mngvpc.vpc_id }}"
-        peer_vpc_id: "{{ cmpvpc.vpc_id }}"
+        vpc_id: "{{ mngvpc.vpc.id }}"
+        peer_vpc_id: "{{ cmpvpc.vpc.id }}"
         state: present
         tags:
           Name: "{{ mng_vpc_name }}-{{ cmp_vpc_name }}-Peering"
@@ -77,22 +133,39 @@
           Project: "{{ project }}"
           Student: "{{ student }}"
       register: acceptpeer
+    - name: Get Management Route table ID
+      ec2_vpc_route_table_facts:
+        aws_access_key: "{{ aws_access_key }}"
+        aws_secret_key: "{{ aws_secret_key }}"
+        region: "{{ mng_vpc_region }}"
+        filters:
+          vpc_id: "{{ mngvpc.vpc.id }}"
+      register: mgmtrt
+    - name: Get Compute Route table ID
+      ec2_vpc_route_table_facts:
+        aws_access_key: "{{ aws_access_key }}"
+        aws_secret_key: "{{ aws_secret_key }}"
+        region: "{{ cmp_vpc_region }}"
+        filters:
+          vpc_id: "{{ cmpvpc.vpc.id }}"
+      register: cmprt
     - name: Set up Management Public Subnets Route Table
       ec2_vpc_route_table:
         aws_access_key: "{{ aws_access_key }}"
         aws_secret_key: "{{ aws_secret_key }}"
-        vpc_id: "{{ mngvpc.vpc_id }}"
+        vpc_id: "{{ mngvpc.vpc.id }}"
         region: "{{ mng_vpc_region }}"
         state: present
+        route_table_id: "{{ mgmtrt.route_tables[0].id }}"
         tags:
           Name: "Public-RT-for-{{ mng_vpc_name }}-vpc"
           Project: "{{ project }}"
           Student: "{{ student }}"
         subnets:
-          "{{ mngvpc.subnets | get_public_subnets_ids('Type','Public') }}"
+          - "{{ mngsubnet.subnet.id }}"
         routes:
           - dest: 0.0.0.0/0
-            gateway_id: "{{ mngvpc.igw_id }}"
+            gateway_id: "{{ mngigw.gateway_id }}"
           - dest: "{{ cmp_vpc_cidr_block }}"
             vpc_peering_connection_id: "{{ vpcpeer.peering_id }}"
       register: mngpublic_rt
@@ -100,18 +173,21 @@
       ec2_vpc_route_table:
         aws_access_key: "{{ aws_access_key }}"
         aws_secret_key: "{{ aws_secret_key }}"
-        vpc_id: "{{ cmpvpc.vpc_id }}"
+        vpc_id: "{{ cmpvpc.vpc.id }}"
         region: "{{ cmp_vpc_region }}"
         state: present
+        route_table_id: "{{ cmprt.route_tables[0].id }}"
         tags:
           Name: "Public-RT-for-{{ cmp_vpc_name }}-vpc"
           Project: "{{ project }}"
           Student: "{{ student }}"
         subnets:
-          "{{ cmpvpc.subnets | get_public_subnets_ids('Type','Public') }}"
+          - "{{ cmpmgmtsubnet.subnet.id }}"
+          - "{{ cmpuplinksubnet.subnet.id }}"
+          - "{{ cmpdownlinksubnet.subnet.id }}"
         routes:
           - dest: 0.0.0.0/0
-            gateway_id: "{{ cmpvpc.igw_id }}"
+            gateway_id: "{{ cmpigw.gateway_id }}"
           - dest: "{{ mng_vpc_cidr_block }}"
             vpc_peering_connection_id: "{{ vpcpeer.peering_id }}"
       register: cmppublic_rt

@@ -14,10 +14,6 @@ mng_public_cidr_1: "10.25.10.0/24"
 mng_public_az_1: "{{ mng_vpc_region }}a"
 mng_private_cidr_1: "10.25.30.0/24"
 mng_private_az_1: "{{ mng_vpc_region }}a"
-mng_vpc_subnets:
-  - cidr: "{{ mng_public_cidr_1 }}"
-    az: "{{ mng_public_az_1 }}"
-    resource_tags: { "Name":"{{ mng_vpc_name }}-{{ mng_public_az_1 }}-mgmt_subnet", "Type":"Public", "Alias":"Management_Mgmt_Subnet", "Project": "{{ project }}", "Student": "{{ student }}" }
 
 # Variables for Compute VPC
 cmp_vpc_name: Compute
@@ -30,14 +26,4 @@ cmp_private_az_1: "{{ cmp_vpc_region }}a"
 cmp_private_cidr_2: "10.10.30.0/24"
 cmp_private_az_2: "{{ cmp_vpc_region }}a"
 
-cmp_vpc_subnets:
-  - cidr: "{{ cmp_public_cidr_1 }}"
-    az: "{{ cmp_public_az_1 }}"
-    resource_tags: { "Name":"{{ cmp_vpc_name }}-{{ cmp_public_az_1 }}-mgmt_subnet", "Type":"Public", "Alias":"Compute_Mgmt_Subnet", "Project": "{{ project }}", "Student": "{{ student }}" }
-  - cidr: "{{ cmp_private_cidr_1 }}"
-    az: "{{ cmp_private_az_1 }}"
-    resource_tags: { "Name":"{{ cmp_vpc_name }}-{{ cmp_private_az_1 }}-uplink-subnet", "Type":"Private", "Alias":"Compute_Uplink_Subnet", "Project": "{{ project }}", "Student": "{{ student }}" }
-  - cidr: "{{ cmp_private_cidr_2 }}"
-    az: "{{ cmp_private_az_2 }}"
-    resource_tags: { "Name":"{{ cmp_vpc_name }}-{{ cmp_private_az_2 }}-downlink-subnet", "Type":"Public", "Alias":"Compute_Downlink_Subnet", "Project": "{{ project }}", "Student": "{{ student }}" }
 

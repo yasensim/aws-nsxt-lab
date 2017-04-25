@@ -3,7 +3,6 @@ aws_access_key: "AKIAJJNO357XYZKITAEQ"
 aws_secret_key: "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"
 
 student: "SecondStudent"
-
 project: "HOL-Yasen"
 
 # Variables for Management VPC
@@ -27,3 +26,25 @@ cmp_private_cidr_2: "10.10.30.0/24"
 cmp_private_az_2: "{{ cmp_vpc_region }}a"
 
 
+ManagementSecGroup:
+  rules:
+    - proto: icmp
+      from_port: -1
+      to_port: -1
+      cidr_ip: 0.0.0.0/0
+    - proto: tcp
+      from_port: 22
+      to_port: 22
+      cidr_ip: 0.0.0.0/0
+    - proto: tcp
+      from_port: 80
+      to_port: 80
+      cidr_ip: 0.0.0.0/0
+    - proto: tcp
+      from_port: 443
+      to_port: 443
+      cidr_ip: 0.0.0.0/0
+    - proto: all
+      cidr_ip: 
+        - "{{ mng_vpc_cidr_block }}"
+        -  "{{ cmp_vpc_cidr_block }}"

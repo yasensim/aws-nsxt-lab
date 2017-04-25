@@ -1,0 +1,30 @@
+---
+- name: Configure NSX
+  hosts: localhost
+  connection: local
+  gather_facts: False
+  vars_files:
+    - ./answerfile.yml
+  tasks:
+    - name: Set Dynamic hosts invetnory for NSX Manager
+      add_host: 
+        hostname: nsx-managerY
+        groups: nsx-managersY
+        ansible_host: 52.34.97.151
+        ansible_port: 22
+        ansible_ssh_user: admin
+      register: inv
+    - debug: var=inv
+- name: Retrieve NSX Man thumbprint
+  serial: 1
+  hosts: nsx-managersR
+  connection: smart
+  gather_facts: False
+  become: true
+  vars_files:
+    - ./answerfile.yml
+  tasks:
+    - name: Retrieve thumbprint
+      command: 'get certificate api thumbprint'
+      register: thumbprint
+    - debug: var=thumbprint

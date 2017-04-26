@@ -1,33 +1,41 @@
 ---
-- name: Wait untill status is running
+- name: Configure NSX
   hosts: localhost
   connection: local
-  gather_facts: True
+  gather_facts: False
   vars_files:
     - ../answerfile.yml
   tasks:
-    - name: Check NSX Manager status
-      ec2_remote_facts:
-        aws_access_key: "{{ aws_access_key }}"
-        aws_secret_key: "{{ aws_secret_key }}"
-        region: "{{ mng_vpc_region }}"
-        filters:
-          instance-id: i-0e019aa34a204b258
-      register: nsxmanstatus
-      retries: 20
-      delay: 30
-    - debug: msg="{{ nsxmanstatus.instances[0].state }} state !!!"
+    - name: Retrieve thumbprint
+      command: 'ssh admin@"{{ nsxmaninstance.instances[0].public_ip }}" get certificate api thumbprint'
+      register: thumbprint
+    - name: Join controller to Manager
+      command: 'ssh admin@"{{ nsxctrinstance.instances[0].public_ip }}" join management-plane "{{ nsxmaninstance.instances[0].private_ip }}" username admin password "{{ nsx_admin_password }}" thumbprint "{{ thumbprint.stdout }}" '
+      ignore_errors: True
+      register: ctrjoin
+      until: ctrjoin.stdout == "Node successfully registered and controller restarted"
+      retries: 3
+      delay: 60
+    - name: Set control cluster shared secret
+      command: 'ssh admin@"{{ nsxctrinstance.instances[0].public_ip }}" set control-cluster security-model shared-secret secret VMware1! '
+      register: ctrsecret
+    - name: Initialize the controller cluster
+      command: 'ssh admin@"{{ nsxctrinstance.instances[0].public_ip }}" initialize control-cluster '
+      register: ctrinit
+      until: ctrinit.stdout == "Control cluster initialization successful."
+      retries: 3
+      delay: 90
+    - name: Activate the controller
+      command: 'ssh admin@"{{ nsxctrinstance.instances[0].public_ip }}" activate control-cluster '
+      register: ctract
+      until: ctract.stdout == "Control cluster activation successful."
+      retries: 3
+      delay: 60
 
-#- name: Configure NSX
-#  hosts: localhost
-#  connection: local
-#  gather_facts: False
-#  vars_files:
-#    - ../answerfile.yml
-#  tasks:
-#    - name: Retrieve thumbprint
-#      command: 'ssh admin@52.36.63.59 get certificate api thumbprint'
-#      register: thumbprint
+
+
+
+
 
 
 

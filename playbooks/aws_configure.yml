@@ -78,7 +78,7 @@
         cidr: "{{ cmp_private_cidr_1 }}"
         resource_tags: { "Name":"{{ cmp_vpc_name }}-{{ cmp_private_az_1 }}-uplink-subnet", "Type":"Private", "Alias":"Compute_Uplink_Subnet", "Project": "{{ project }}", "Student": "{{ student }}" }
       register: cmpuplinksubnet
-    - name: Create Compute VPC Downlink subnet
+    - name: Create Compute VPC vTEP subnet
       ec2_vpc_subnet:
         aws_access_key: "{{ aws_access_key }}"
         aws_secret_key: "{{ aws_secret_key }}"
@@ -86,7 +86,7 @@
         state: present
         vpc_id: "{{ cmpvpc.vpc.id }}"
         cidr: "{{ cmp_private_cidr_2 }}"
-        resource_tags: { "Name":"{{ cmp_vpc_name }}-{{ cmp_private_az_2 }}-downlink-subnet", "Type":"Public", "Alias":"Compute_Downlink_Subnet", "Project": "{{ project }}", "Student": "{{ student }}" }
+        resource_tags: { "Name":"{{ cmp_vpc_name }}-{{ cmp_private_az_2 }}-vTEP-subnet", "Type":"Public", "Alias":"Compute_vTEP_Subnet", "Project": "{{ project }}", "Student": "{{ student }}" }
       register: cmpdownlinksubnet
     - name: Create Compute Internet Gateway
       ec2_vpc_igw:

@@ -1,0 +1,33 @@
+---
+- name: Wait untill status is running
+  hosts: localhost
+  connection: local
+  gather_facts: True
+  vars_files:
+    - ../answerfile.yml
+  tasks:
+    - name: Check NSX Manager status
+      ec2_remote_facts:
+        aws_access_key: "{{ aws_access_key }}"
+        aws_secret_key: "{{ aws_secret_key }}"
+        region: "{{ mng_vpc_region }}"
+        filters:
+          instance-id: i-0e019aa34a204b258
+      register: nsxmanstatus
+      retries: 20
+      delay: 30
+    - debug: msg="{{ nsxmanstatus.instances[0].state }} state !!!"
+
+#- name: Configure NSX
+#  hosts: localhost
+#  connection: local
+#  gather_facts: False
+#  vars_files:
+#    - ../answerfile.yml
+#  tasks:
+#    - name: Retrieve thumbprint
+#      command: 'ssh admin@52.36.63.59 get certificate api thumbprint'
+#      register: thumbprint
+
+
+

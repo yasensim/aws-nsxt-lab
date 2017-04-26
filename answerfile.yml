@@ -1,6 +1,6 @@
 # Variables that can provide as extra vars
-aws_access_key: "AKIAJJNO357XYZKITAEQ"
-aws_secret_key: "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"
+aws_access_key: "AKIAIFHZBHXAR4BRHD6A"
+aws_secret_key: "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"
 
 student: "SecondStudent"
 project: "HOL-Yasen"

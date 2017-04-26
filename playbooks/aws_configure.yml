@@ -4,7 +4,7 @@
   connection: local
   gather_facts: False
   vars_files:
-    - ./answerfile.yml
+    - ../answerfile.yml
   tasks:
     - name: Create Management AWS VPC
       ec2_vpc_net:

@@ -94,12 +94,6 @@ extract_and_verify() {
     gpg --yes -o $UNTARDIR/$VMWARE_PUBLIC_GPGRING --dearmor $UNTARDIR/$VMWARE_PUBLIC_KEY
     gpg --status-fd 1 --no-default-keyring --keyring $UNTARDIR/$VMWARE_PUBLIC_GPGRING \
         --trust-model always --verify $UNTARDIR/nsx-lcp-*tar.gz.sig 2>/dev/null
-    if [ $? -ne 0 ]; then
-        echo "ERROR: Verification failed!!!"
-        handle_cleanup
-    else
-        echo "Verification successful!!!"
-    fi
 
     echo -e "\n------------------------------"
     echo "Extracting nsx lcp packages"

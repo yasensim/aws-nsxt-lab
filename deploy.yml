@@ -1,6 +1,7 @@
 ---
 - include: playbooks/aws_configure.yml
 - include: playbooks/ami_deploy.yml
+- include: playbooks/vm_deploy.yml
 - name: Wait 3 more minutes the components to become fully operational
   hosts: localhost
   gather_facts: False
@@ -8,5 +9,6 @@
     - name: Wait 3 minutes before start configuring NSX
       pause: minutes=3
 - include: playbooks/nsx-config.yml
+
 
 

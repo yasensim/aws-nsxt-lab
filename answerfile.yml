@@ -1,8 +1,9 @@
 # Variables that can provide as extra vars
-aws_access_key: "AKIAIFHZBHXAR4BRHD6A"
-aws_secret_key: "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"
+aws_access_key: "AKIAJ65OWOHURMVZVHPA"
+aws_secret_key: "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"
 nsx_admin_password: "VMware!mgr1998"
-student: "SecondStudent"
+pcg_admin_password: "VMware!pcg1998"
+student: "FirstStudent"
 project: "HOL-Yasen"
 
 # Variables for Management VPC
@@ -48,3 +49,29 @@ ManagementSecGroup:
       cidr_ip: 
         - "{{ mng_vpc_cidr_block }}"
         -  "{{ cmp_vpc_cidr_block }}"
+
+ComputeSecGroup:
+  rules:
+    - proto: icmp
+      from_port: -1
+      to_port: -1
+      cidr_ip: 0.0.0.0/0
+    - proto: tcp
+      from_port: 22
+      to_port: 22
+      cidr_ip: 0.0.0.0/0
+    - proto: tcp
+      from_port: 80
+      to_port: 80
+      cidr_ip: 0.0.0.0/0
+    - proto: tcp
+      from_port: 443
+      to_port: 443
+      cidr_ip: 0.0.0.0/0
+    - proto: all
+      cidr_ip: 
+        - "{{ mng_vpc_cidr_block }}"
+        -  "{{ cmp_vpc_cidr_block }}"
+
+
+ubuntu_ami: 'ami-7c22b41c'

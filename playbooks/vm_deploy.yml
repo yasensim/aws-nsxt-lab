@@ -1,0 +1,160 @@
+---
+- name: Deploy test VMs on the Compute cluster
+  hosts: localhost
+  connection: local
+  gather_facts: False
+  vars_files:
+    - ../answerfile.yml
+  tasks:
+    - name: Create Compute Security Group
+      ec2_group:
+        aws_access_key: "{{ aws_access_key }}"
+        aws_secret_key: "{{ aws_secret_key }}"
+        region: "{{ cmp_vpc_region }}"
+        vpc_id: "{{ cmpvpc.vpc.id }}"
+        name: ComputeSecGroup
+        description: Security Group in Compute VPC
+        rules: "{{ ComputeSecGroup.rules }}"
+        state: present
+      register: computesg
+    - name: Tag the Compute Security Groups
+      ec2_tag:
+        aws_access_key: "{{ aws_access_key }}"
+        aws_secret_key: "{{ aws_secret_key }}"
+        region: "{{ cmp_vpc_region }}"
+        resource: "{{ computesg.group_id }}"
+        state: present
+        tags:
+          Name: "ComputeSecGroup"
+          Project: "{{ project }}"
+          Student: "{{ student }}"
+    - name: Launch two instances
+      ec2:
+        aws_access_key: "{{ aws_access_key }}"
+        aws_secret_key: "{{ aws_secret_key }}"
+        region: "{{ cmp_vpc_region }}"
+        image: "{{ ubuntu_ami }}"
+        instance_type: t2.micro
+        key_name: nsxman-key
+        wait: yes
+        vpc_subnet_id: "{{ cmpmgmtsubnet.subnet.id }}"
+        assign_public_ip: yes
+        instance_tags:
+          Name: "testVM"
+          Project: "{{ project }}"
+          Student: "{{ student }}"
+        exact_count: 2
+        count_tag:
+          Name: "testVM-"
+          Project: "{{ project }}"
+          Student: "{{ student }}"
+        group_id: "{{ computesg.group_id }}"
+      register: instances
+    - name: Check first instance status
+      ec2_remote_facts:
+        aws_access_key: "{{ aws_access_key }}"
+        aws_secret_key: "{{ aws_secret_key }}"
+        region: "{{ cmp_vpc_region }}"
+        filters:
+          instance-id: "{{ instances.instance_ids[0] }}"
+      register: ins1status
+      until: ins1status.instances[0].state == "running"
+      retries: 20
+      delay: 30
+
+    - name: Create vTEP interface on first instance
+      ec2_eni:
+        aws_access_key: "{{ aws_access_key }}"
+        aws_secret_key: "{{ aws_secret_key }}"
+        region: "{{ cmp_vpc_region }}"
+        instance_id: "{{ instances.instance_ids[0] }}"
+        subnet_id: "{{ cmpdownlinksubnet.subnet.id }}"
+        security_groups: 
+          - "{{ computesg.group_id }}"
+        delete_on_termination: true
+        device_index: 1
+        attached: true
+        state: present
+      register: vtep
+    - name: Set NSX tag on the vTEP interface First instance
+      ec2_tag:
+        aws_access_key: "{{ aws_access_key }}"
+        aws_secret_key: "{{ aws_secret_key }}"
+        region: "{{ cmp_vpc_region }}"
+        resource: "{{ vtep.interface.id }}"
+        state: present
+        tags:
+          nsx: true
+          'nsx:network': default
+          Project: "{{ project }}"
+          Student: "{{ student }}"
+      register: vteptag
+
+    - name: Check second instance status
+      ec2_remote_facts:
+        aws_access_key: "{{ aws_access_key }}"
+        aws_secret_key: "{{ aws_secret_key }}"
+        region: "{{ cmp_vpc_region }}"
+        filters:
+          instance-id: "{{ instances.instance_ids[1] }}"
+      register: ins2status
+      until: ins2status.instances[0].state == "running"
+      retries: 20
+      delay: 30
+
+    - name: Create vTEP interface on second instance
+      ec2_eni:
+        aws_access_key: "{{ aws_access_key }}"
+        aws_secret_key: "{{ aws_secret_key }}"
+        region: "{{ cmp_vpc_region }}"
+        instance_id: "{{ instances.instance_ids[1] }}"
+        subnet_id: "{{ cmpdownlinksubnet.subnet.id }}"
+        security_groups: 
+          - "{{ computesg.group_id }}"
+        delete_on_termination: true
+        device_index: 1
+        attached: true
+        state: present
+      register: vtep2
+    - name: Set NSX tag on the vTEP interface 2
+      ec2_tag:
+        aws_access_key: "{{ aws_access_key }}"
+        aws_secret_key: "{{ aws_secret_key }}"
+        region: "{{ cmp_vpc_region }}"
+        resource: "{{ vtep2.interface.id }}"
+        state: present
+        tags:
+          nsx: true
+          'nsx:network': default
+          Project: "{{ project }}"
+          Student: "{{ student }}"
+      register: vteptag2
+
+
+    - name: Remove previous SSH keys from known_hosts - Instance1
+      command: 'ssh-keygen -R "{{ instances.instances[0].public_ip }}"'
+      register: command_result11
+      failed_when: "command_result11.rc > 0 and command_result11.rc != 255"
+    - name: Wait for SSH to come up on First instance
+      wait_for:
+        host: "{{ instances.instances[0].public_ip }}"
+        port: 22
+        search_regex: OpenSSH
+        delay: 15
+    - name: add host to known_hosts - First instance
+      shell: 'ssh-keyscan -H "{{ instances.instances[0].public_ip }}" >> ~/.ssh/known_hosts'
+
+
+    - name: Remove previous SSH keys from known_hosts - Instance2
+      command: 'ssh-keygen -R "{{ instances.instances[1].public_ip }}"'
+      register: command_result12
+      failed_when: "command_result12.rc > 0 and command_result12.rc != 255"
+    - name: Wait for SSH to come up on Second instance
+      wait_for:
+        host: "{{ instances.instances[1].public_ip }}"
+        port: 22
+        search_regex: OpenSSH
+        delay: 15
+    - name: add host to known_hosts - Second instance
+      shell: 'ssh-keyscan -H "{{ instances.instances[1].public_ip }}" >> ~/.ssh/known_hosts'
+

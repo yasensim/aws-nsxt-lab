@@ -1,0 +1,177 @@
+---
+- name: Configure initial NSX config
+  hosts: localhost
+  gather_facts: False
+  vars_files:
+    - ../answerfile.yml
+  tasks:
+    - name: Create switch profile
+      uri:
+        url: https://{{ nsxmaninstance.instances[0].public_ip }}/api/v1/switching-profiles
+        method: POST
+        user: admin
+        password: "{{ nsx_admin_password }}"
+        headers:
+          Content-Type: "application/json"
+        force_basic_auth: yes
+        validate_certs: no
+        body: "{ \"resource_type\": \"SpoofGuardSwitchingProfile\", \"display_name\": \"spoof-guard-lport-bindings\", \"white_list_providers\": [\"LPORT_BINDINGS\"]}"
+        status_code: 201
+        body_format: json
+      register: swprofile
+    - name: Get Transport Zone
+      run_once: true
+      uri:
+        url: https://{{ nsxmaninstance.instances[0].public_ip }}/api/v1/transport-zones
+        method: GET
+        user: admin
+        password: "{{ nsx_admin_password }}"
+        headers:
+          Content-Type: "application/json"
+        force_basic_auth: yes
+        validate_certs: no
+        status_code: 200
+        body_format: json
+      register: tzone
+    - name: Create logical switch
+      uri:
+        url: https://{{ nsxmaninstance.instances[0].public_ip }}/api/v1/logical-switches
+        method: POST
+        user: admin
+        password: "{{ nsx_admin_password }}"
+        headers:
+          Content-Type: "application/json"
+        force_basic_auth: yes
+        validate_certs: no
+        body: "{ {% for tz in tzone.json.results %} {% if tz.transport_type == 'OVERLAY' %} \"transport_zone_id\":\"{{ tz.id }}\", {% endif %}{% endfor %} \"replication_mode\": \"MTEP\", \"admin_state\":\"UP\", \"display_name\":\"{{ logical_topology.ls_name }}\",\"switching_profile_ids\": [{\"key\": \"SpoofGuardSwitchingProfile\", \"value\": \"{{ swprofile.json.id }}\"}]}"
+        status_code: 201
+        body_format: json
+      register: sw
+
+    - name: Get Edge Cluster ID
+      uri:
+        url: https://{{ nsxmaninstance.instances[0].public_ip }}/api/v1/edge-clusters
+        method: GET
+        user: admin
+        password: "{{ nsx_admin_password }}"
+        headers:
+          Content-Type: "application/json"
+        force_basic_auth: yes
+        validate_certs: no
+        status_code: 200
+        body_format: json
+      register: edgecl
+
+
+    - name: Create DHCP Server Profile
+      uri:
+        url: https://{{ nsxmaninstance.instances[0].public_ip }}/api/v1/dhcp/server-profiles
+        method: POST
+        user: admin
+        password: "{{ nsx_admin_password }}"
+        headers:
+          Content-Type: "application/json"
+        force_basic_auth: yes
+        validate_certs: no
+        body: "{ \"display_name\" : \"dhcp-server-profile\", \"edge_cluster_id\" : \"{{ edgecl.json.results[0].id }}\"}"
+        status_code: 201
+        body_format: json
+      register: serverprof
+
+    - name: Create DHCP Server
+      uri:
+        url: https://{{ nsxmaninstance.instances[0].public_ip }}/api/v1/dhcp/servers
+        method: POST
+        user: admin
+        password: "{{ nsx_admin_password }}"
+        headers:
+          Content-Type: "application/json"
+        force_basic_auth: yes
+        validate_certs: no
+        body: "{ \"display_name\" : \"dhcp-server\", \"dhcp_profile_id\" : \"{{ serverprof.json.id }}\", \"ipv4_dhcp_server\" : { \"dhcp_server_ip\" : \"{{ logical_topology.dhcp_ip }}\" }}"
+        status_code: 201
+        body_format: json
+      register: dhcpserver
+
+    - name: Create DHCP IP Pool
+      uri:
+        url: https://{{ nsxmaninstance.instances[0].public_ip }}/api/v1/dhcp/servers/{{ dhcpserver.json.id }}/ip-pools
+        method: POST
+        user: admin
+        password: "{{ nsx_admin_password }}"
+        headers:
+          Content-Type: "application/json"
+        force_basic_auth: yes
+        validate_certs: no
+        body: "{ \"display_name\" : \"dhcp-ip-pool\", \"gateway_ip\" : \"{{ logical_topology.gw }}\", \"allocation_ranges\" : [ { \"start\" : \"{{ logical_topology.start }}\", \"end\" : \"{{ logical_topology.end }}\" } ]}"
+        status_code: 201
+        body_format: json
+      register: ippool
+
+    - name: Attach DHCP server to LS
+      uri:
+        url: https://{{ nsxmaninstance.instances[0].public_ip }}/api/v1/logical-ports
+        method: POST
+        user: admin
+        password: "{{ nsx_admin_password }}"
+        headers:
+          Content-Type: "application/json"
+        force_basic_auth: yes
+        validate_certs: no
+        body: "{ \"attachment\": { \"attachment_type\": \"DHCP_SERVICE\", \"id\": \"{{ dhcpserver.json.id }}\" }, \"description\": \"Ansible - yasensim\", \"display_name\": \"{{ logical_topology.ls_name }} - DHCP Server Port\", \"logical_switch_id\": \"{{ sw.json.id }}\", \"resource_type\": \"LogicalPort\", \"admin_state\":\"UP\" }"
+        status_code: 201
+        body_format: json
+      register: attach
+
+    - name: Create switchport
+      uri:
+        url: https://{{ nsxmaninstance.instances[0].public_ip }}/api/v1/logical-ports
+        method: POST
+        user: admin
+        password: "{{ nsx_admin_password }}"
+        headers:
+          Content-Type: "application/json"
+        force_basic_auth: yes
+        validate_certs: no
+        body: "{ \"admin_state\": \"UP\", \"display_name\": \"to T0\", \"logical_switch_id\": \"{{ sw.json.id }}\", \"resource_type\": \"LogicalPort\"} " 
+        status_code: 201
+        body_format: json
+      register: swport
+
+    - name: Get T0 router
+      run_once: true
+      uri:
+        url: https://{{ nsxmaninstance.instances[0].public_ip }}/api/v1/logical-routers
+        method: GET
+        user: admin
+        password: "{{ nsx_admin_password }}"
+        headers:
+          Content-Type: "application/json"
+        force_basic_auth: yes
+        validate_certs: no
+        status_code: 200
+        body_format: json
+      register: t0
+
+    - name: Create routerport
+      uri:
+        url: https://{{ nsxmaninstance.instances[0].public_ip }}/api/v1/logical-router-ports
+        method: POST
+        user: admin
+        password: "{{ nsx_admin_password }}"
+        headers:
+          Content-Type: "application/json"
+        force_basic_auth: yes
+        validate_certs: no
+        body: "{ \"resource_type\": \"LogicalRouterDownLinkPort\", \"logical_router_id\": \"{{ t0.json.results[0].id }}\", \"linked_logical_switch_port_id\": { \"target_type\": \"LogicalPort\", \"target_id\": \"{{ swport.json.id }}\"}, \"subnets\": [{ \"ip_addresses\": [ \"{{ logical_topology.gw }}\"], \"prefix_length\": \"{{ logical_topology.prefix }}\"} ]}"
+        status_code: 201
+        body_format: json
+      register: rport
+
+
+
+
+
+
+
+

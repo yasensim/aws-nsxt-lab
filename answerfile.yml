@@ -77,7 +77,16 @@ ComputeSecGroup:
 
 
 ubuntu_ami: 'ami-7c22b41c'
-ls_name: 'testLS'
+logical_topology:
+  ls_name: 'testLS'
+  network: '192.168.123.0'
+  prefix: 24
+  gw: '192.168.123.1'
+  dhcp_ip: '192.168.123.254/24'
+  start: '192.168.123.10'
+  end: '192.168.123.100'
+  dns: '8.8.8.8'
+
 
 
 

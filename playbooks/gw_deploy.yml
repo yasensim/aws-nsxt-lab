@@ -1,0 +1,80 @@
+---
+- name: Deploy NSX GW
+  hosts: localhost
+  gather_facts: False
+  vars_files:
+    - ../answerfile.yml
+  tasks:
+    - name: Check AWS Sync status
+      uri:
+        url: https://{{ nsxcsminstance.instances[0].public_ip }}/csmapi/api/v1/csm/aws-accounts
+        method: GET
+        user: admin
+        password: "{{ nsx_admin_password }}"
+        headers:
+          Content-Type: "application/json"
+        force_basic_auth: yes
+        validate_certs: no
+        status_code: 200
+        body_format: json
+      register: awsaccountstatus
+      until: awsaccountstatus.json.results[0].status.inventory_sync_status == "SYNCED"
+      retries: 10
+      delay: 30
+
+    - name: Get NSX GW AMI ID
+      ec2_ami_find:
+        aws_access_key: "{{ aws_access_key }}"
+        aws_secret_key: "{{ aws_secret_key }}"
+        region: "{{ mng_vpc_region }}"
+        name: "nsx-public-gateway-*"
+        sort: name
+        sort_order: descending
+        sort_end: 1
+        no_result_action: fail
+        state: available
+      register: nsxawsgwami
+
+    - name: Get Compute subnets AZ
+      ec2_vpc_subnet_facts:
+        aws_access_key: "{{ aws_access_key }}"
+        aws_secret_key: "{{ aws_secret_key }}"
+        region: "{{ mng_vpc_region }}"
+        filters:
+          subnet-id: "{{ cmpmgmtsubnet.subnet.id }}"
+      register: nsxcmpsubnetscheck
+
+    - name: Deploy NSX Gateway
+      run_once: true
+      uri:
+        url: https://{{ nsxcsminstance.instances[0].public_ip }}/csmapi/api/v1/csm/aws/gateways?action=deploy
+        method: POST
+        user: admin
+        password: "{{ nsx_admin_password }}"
+        headers:
+          Content-Type: "application/json"
+        body: "{ \"configuration\": { \"ami_id\": \"{{ nsxawsgwami.results[0].ami_id }}\", \"nsx_manager_connection\": \"PRIVATE_IP\", \"default_quarantine_policy_enabled\": false, \"key_pair_name\": \"nsxman-key\", \"is_ha_enabled\": false, \"gateway_ha_configuration\": [{ \"availability_zone\": \"{{ nsxcmpsubnetscheck.subnets[0].availability_zone }}\", \"uplink_subnet\": \"{{ cmpuplinksubnet.subnet.id }}\", \"downlink_subnet\": \"{{ cmpdownlinksubnet.subnet.id }}\", \"management_subnet\": \"{{ cmpmgmtsubnet.subnet.id }}\", \"gateway_ha_index\": 0 }]}, \"account_id\": \"{{ awsaccountstatus.json.results[0].id }}\", \"region_id\": \"{{ cmp_vpc_region }}\", \"vpc_id\": \"{{ cmpvpc.vpc.id }}\" }"
+        force_basic_auth: yes
+        validate_certs: no
+        status_code: 200
+        body_format: json
+      register: awsnsxgw
+
+    - name: Check NSX GW deployment
+      uri:
+        url: https://{{ nsxcsminstance.instances[0].public_ip }}/csmapi/api/v1/csm/aws/gateways
+        method: GET
+        user: admin
+        password: "{{ nsx_admin_password }}"
+        headers:
+          Content-Type: "application/json"
+        force_basic_auth: yes
+        validate_certs: no
+        status_code: 200
+        body_format: json
+      register: nsxgwstatus
+      until: nsxgwstatus.json.results[0].region_id is defined
+      retries: 20
+      delay: 60
+
+

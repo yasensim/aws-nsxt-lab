@@ -9,6 +9,7 @@
     - name: Wait 3 minutes before start configuring NSX
       pause: minutes=3
 - include: playbooks/nsx-config.yml
-
+- include: playbooks/csm_config.yml
+- include: playbooks/gw_deploy.yml
 
 

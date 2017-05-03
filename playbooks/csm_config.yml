@@ -1,0 +1,38 @@
+---
+- name: Create CSM Configuration
+  hosts: localhost
+  gather_facts: False
+  vars_files:
+    - ../answerfile.yml
+  tasks:
+    - name: Configure AWS Account
+      run_once: true
+      uri:
+        url: https://{{ nsxcsminstance.instances[0].public_ip }}/csmapi/api/v1/csm/aws-accounts
+        method: POST
+        user: admin
+        password: "{{ nsx_admin_password }}"
+        headers:
+          Content-Type: "application/json"
+        body: "{ \"display_name\": \"Account ABC\", \"cloud_type\": \"AWS\", \"tenant_id\": \"123\", \"access_key\": \"{{ aws_access_key }}\", \"secret_key\": \"{{ aws_secret_key }}\" }"
+        force_basic_auth: yes
+        validate_certs: no
+        status_code: 200
+        body_format: json
+      register: awsaccount
+    - name: Configure NSX Manager Connection
+      run_once: true
+      uri:
+        url: https://{{ nsxcsminstance.instances[0].public_ip }}/csmapi/api/v1/csm/nsx-manager-accounts
+        method: POST
+        user: admin
+        password: "{{ nsx_admin_password }}"
+        headers:
+          Content-Type: "application/json"
+        body: "{ \"public_ip\": \"{{ nsxmaninstance.instances[0].public_ip }}\", \"private_ip\": \"{{ nsxmaninstance.instances[0].private_ip }}\", \"thumbprint\": \"{{ thumbprint.stdout }}\", \"tenant_id\": \"123\", \"username\": \"admin\", \"password\": \"{{ nsx_admin_password }}\",\"ntp_server_name\": \"{{ ntp_server }}\" }"
+        force_basic_auth: yes
+        validate_certs: no
+        status_code: 200,302
+        body_format: json
+      register: nsxaccount
+

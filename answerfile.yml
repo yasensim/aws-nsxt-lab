@@ -6,24 +6,26 @@ pcg_admin_password: "VMware!pcg1998"
 student: "FirstStudent"
 project: "HOL-Yasen"
 
+ntp_server: '10.29.12.201'
+
 # Variables for Management VPC
 mng_vpc_name: Management
 mng_vpc_region: us-west-2
-mng_vpc_cidr_block: "10.25.0.0/16"
-mng_public_cidr_1: "10.25.10.0/24"
+mng_vpc_cidr_block: "10.100.0.0/16"
+mng_public_cidr_1: "10.100.10.0/24"
 mng_public_az_1: "{{ mng_vpc_region }}a"
-mng_private_cidr_1: "10.25.30.0/24"
+mng_private_cidr_1: "10.100.100.0/24"
 mng_private_az_1: "{{ mng_vpc_region }}a"
 
 # Variables for Compute VPC
 cmp_vpc_name: Compute
 cmp_vpc_region: us-west-2
-cmp_vpc_cidr_block: "10.10.0.0/16"
+cmp_vpc_cidr_block: "10.10.1.0/16"
 cmp_public_cidr_1: "10.10.10.0/24"
 cmp_public_az_1: "{{ cmp_vpc_region }}a"
-cmp_private_cidr_1: "10.10.20.0/24"
+cmp_private_cidr_1: "10.10.2.0/24"
 cmp_private_az_1: "{{ cmp_vpc_region }}a"
-cmp_private_cidr_2: "10.10.30.0/24"
+cmp_private_cidr_2: "10.10.3.0/24"
 cmp_private_az_2: "{{ cmp_vpc_region }}a"
 
 
@@ -75,3 +77,7 @@ ComputeSecGroup:
 
 
 ubuntu_ami: 'ami-7c22b41c'
+ls_name: 'testLS'
+
+
+

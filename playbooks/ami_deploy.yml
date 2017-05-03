@@ -182,7 +182,7 @@
         host: "{{ nsxmaninstance.instances[0].public_ip }}"
         port: 22
         search_regex: OpenSSH
-        delay: 15
+        delay: 30
     - name: add host to known_hosts - Manager
       shell: 'ssh-keyscan -H "{{ nsxmaninstance.instances[0].public_ip }}" >> ~/.ssh/known_hosts'
 
@@ -206,7 +206,7 @@
         host: "{{ nsxctrinstance.instances[0].public_ip }}"
         port: 22
         search_regex: OpenSSH
-        delay: 15
+        delay: 30
     - name: add host to known_hosts - Controller
       shell: 'ssh-keyscan -H "{{ nsxctrinstance.instances[0].public_ip }}" >> ~/.ssh/known_hosts'
 
@@ -230,7 +230,7 @@
         host: "{{ nsxcsminstance.instances[0].public_ip }}"
         port: 22
         search_regex: OpenSSH
-        delay: 15
+        delay: 30
     - name: add host to known_hosts - CSM
       shell: 'ssh-keyscan -H "{{ nsxcsminstance.instances[0].public_ip }}" >> ~/.ssh/known_hosts'
 

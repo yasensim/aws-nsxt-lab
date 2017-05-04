@@ -81,6 +81,14 @@
           Student: "{{ student }}"
       register: vteptag
 
+    - name: Remove previous SSH keys from known_hosts for First instnace
+      command: 'ssh-keygen -R "{{ eip1.public_ip }}"'
+      register: command_result5
+      failed_when: "command_result5.rc > 0 and command_result5.rc != 255"
+    - name: add host to known_hosts - First Instance
+      shell: 'ssh-keyscan -H "{{ eip1.public_ip }}" >> ~/.ssh/known_hosts'
+
+
     - name: Get elastic ip for second instance
       ec2_eip:
         aws_access_key: "{{ aws_access_key }}"
@@ -103,6 +111,14 @@
           Student: "{{ student }}"
       register: vteptag2
 
+    - name: Remove previous SSH keys from known_hosts for Second instnace
+      command: 'ssh-keygen -R "{{ eip2.public_ip }}"'
+      register: command_result6
+      failed_when: "command_result6.rc > 0 and command_result6.rc != 255"
+    - name: add host to known_hosts - Second Instance
+      shell: 'ssh-keyscan -H "{{ eip2.public_ip }}" >> ~/.ssh/known_hosts'
+
+
     - name: Copy install script 1st VM
       command: 'scp ../files/install_nsx_vm_agent.sh ubuntu@"{{ instances.instances[0].public_ip }}":'
       register: cp1
@@ -122,10 +138,6 @@
       command: 'ssh ubuntu@"{{ instances.instances[1].public_ip }}" sudo nohup ./install_nsx_vm_agent.sh  {{ tnode.json.results[0].ip_addresses[0] }} >/dev/null 2>&1 &'
       register: cpai2
 
-    - debug: msg=" You need to wait couple of minutes everything to become operational!!!"
-    - debug: msg=" ssh to instance1 ssh ubuntu@{{ eip1.public_ip }}"
-    - debug: msg=" ssh to instance2 ssh ubuntu@{{ eip2.public_ip }}"
-    - debug: msg=" GUI to NSX Manager https://{{ nsxmaninstance.instances[0].public_ip }}"
-    - debug: msg=" Username admin password {{ nsx_admin_password }}"
+    - debug: msg=" You need to wait couple of minutes everything to become operational!!!\n ssh to instance1 ssh ubuntu@{{ eip1.public_ip }} \n ssh to instance2 ssh ubuntu@{{ eip2.public_ip }} \n GUI to NSX Manager https://{{ nsxmaninstance.instances[0].public_ip }} \n Username admin password {{ nsx_admin_password }}"
 
 

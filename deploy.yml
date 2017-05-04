@@ -12,5 +12,5 @@
 - include: playbooks/csm_config.yml
 - include: playbooks/gw_deploy.yml
 - include: playbooks/topology_create.yml
-
+- include: playbooks/tag_vms.yml
 

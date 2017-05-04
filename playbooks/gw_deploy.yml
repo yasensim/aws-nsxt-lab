@@ -73,7 +73,7 @@
         status_code: 200
         body_format: json
       register: nsxgwstatus
-      until: nsxgwstatus.json.results[0].region_id is defined
+      until: nsxgwstatus.json.results is defined
       retries: 20
       delay: 60
 

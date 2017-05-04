@@ -1,7 +1,7 @@
 # Variables that can provide as extra vars
 aws_access_key: "AKIAJ65OWOHURMVZVHPA"
 aws_secret_key: "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"
-nsx_admin_password: "VMware!mgr1998"
+nsx_admin_password: "VMware1!"
 pcg_admin_password: "VMware!pcg1998"
 student: "FirstStudent"
 project: "HOL-Yasen"

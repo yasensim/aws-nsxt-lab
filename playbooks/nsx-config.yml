@@ -6,6 +6,16 @@
   vars_files:
     - ../answerfile.yml
   tasks:
+    - name: Set NSX Admin Password to Manager
+      command: 'ssh admin@"{{ nsxmaninstance.instances[0].public_ip }}" set user admin password "{{ nsx_admin_password }}" old-password VMware!mgr1998'
+      when: nsx_admin_password != "VMware!mgr1998"
+      register: nsxadminpass
+
+    - name: Set NSX Admin Password to CSM
+      command: 'ssh admin@"{{ nsxcsminstance.instances[0].public_ip }}" set user admin password "{{ nsx_admin_password }}" old-password VMware!mgr1998'
+      when: nsx_admin_password != "VMware!mgr1998"
+      register: nsxadminpasscsm
+
     - name: Retrieve thumbprint
       command: 'ssh admin@"{{ nsxmaninstance.instances[0].public_ip }}" get certificate api thumbprint'
       register: thumbprint

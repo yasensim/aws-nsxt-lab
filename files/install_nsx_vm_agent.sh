@@ -205,6 +205,14 @@ download_dependencies
 install_openvswitch_package
 install_other_nsx_packages
 post_install
+
+`sudo chmod 777 /etc/vmware/nsx/public-cloud-config`
+`sudo printf "gw=$1 \ninterface=eth1:overlay \n" >> /etc/vmware/nsx/public-cloud-config`
+`sudo service nsx-agent restart`
+
 echo -e "\n------------------------------"
 echo "$(date): Installation completed!!!"
 handle_cleanup
+
+
+

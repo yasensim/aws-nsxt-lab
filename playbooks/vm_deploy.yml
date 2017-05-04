@@ -76,19 +76,6 @@
         attached: true
         state: present
       register: vtep
-    - name: Set NSX tag on the vTEP interface First instance
-      ec2_tag:
-        aws_access_key: "{{ aws_access_key }}"
-        aws_secret_key: "{{ aws_secret_key }}"
-        region: "{{ cmp_vpc_region }}"
-        resource: "{{ vtep.interface.id }}"
-        state: present
-        tags:
-          nsx: true
-          'nsx:network': default
-          Project: "{{ project }}"
-          Student: "{{ student }}"
-      register: vteptag
 
     - name: Check second instance status
       ec2_remote_facts:
@@ -116,20 +103,6 @@
         attached: true
         state: present
       register: vtep2
-    - name: Set NSX tag on the vTEP interface 2
-      ec2_tag:
-        aws_access_key: "{{ aws_access_key }}"
-        aws_secret_key: "{{ aws_secret_key }}"
-        region: "{{ cmp_vpc_region }}"
-        resource: "{{ vtep2.interface.id }}"
-        state: present
-        tags:
-          nsx: true
-          'nsx:network': default
-          Project: "{{ project }}"
-          Student: "{{ student }}"
-      register: vteptag2
-
 
     - name: Remove previous SSH keys from known_hosts - Instance1
       command: 'ssh-keygen -R "{{ instances.instances[0].public_ip }}"'

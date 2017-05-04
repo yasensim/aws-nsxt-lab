@@ -1,0 +1,110 @@
+---
+- name: Configure initial NSX config
+  hosts: localhost
+  gather_facts: False
+  vars_files:
+    - ../answerfile.yml
+  tasks:
+    - name: Configure AWS Account
+      run_once: true
+      uri:
+        url: https://{{ nsxcsminstance.instances[0].public_ip }}/csmapi/api/v1/csm/aws-accounts/{{ awsaccountstatus.json.results[0].id }}?action=sync_inventory
+        method: POST
+        user: admin
+        password: "{{ nsx_admin_password }}"
+        force_basic_auth: yes
+        validate_certs: no
+        status_code: 200,201,202
+        body_format: json
+      register: awsaccountsync
+
+    - name: Check AWS Sync status
+      uri:
+        url: https://{{ nsxcsminstance.instances[0].public_ip }}/csmapi/api/v1/csm/aws-accounts
+        method: GET
+        user: admin
+        password: "{{ nsx_admin_password }}"
+        headers:
+          Content-Type: "application/json"
+        force_basic_auth: yes
+        validate_certs: no
+        status_code: 200
+        body_format: json
+      register: awsaccountstatus2
+      until: awsaccountstatus2.json.results[0].status.inventory_sync_status == "SYNCED"
+      retries: 10
+      delay: 30
+
+    - name: Get Nodes
+      run_once: true
+      uri:
+        url: https://{{ nsxmaninstance.instances[0].public_ip }}/api/v1/fabric/nodes
+        method: GET
+        user: admin
+        password: "{{ nsx_admin_password }}"
+        headers:
+          Content-Type: "application/json"
+        force_basic_auth: yes
+        validate_certs: no
+        status_code: 200
+        body_format: json
+      register: tnode
+    - name: Get logical switch hash
+      command: "ssh ubuntu@{{ instances.instances[0].public_ip }} \"curl -u 'admin:ca$hc0w' -H 'Content-Type:application/json' 'http://{{ tnode.json.results[0].ip_addresses[0] }}:7442/PCM/api/v1/pcm/debug/generatehash/?lsid={{ sw.json.id }}&vpcid={{ cmpvpc.vpc.id }}'\" "
+      register: hash
+    - name: Set temp hash fact
+      set_fact:
+        hashtmp: "{{ hash.stdout|regex_findall('\"([^\"]*)\"') }}"
+    - name: Set hash fact
+      set_fact:
+        hash: "{{ sw.json.id }}#{{ hostvars['localhost']['hashtmp'][0] }}"
+#    - debug: msg=" hash {{ hostvars['localhost']['hash'] }}"
+    - name: Set NSX tag on the vTEP interface First instance
+      ec2_tag:
+        aws_access_key: "{{ aws_access_key }}"
+        aws_secret_key: "{{ aws_secret_key }}"
+        region: "{{ cmp_vpc_region }}"
+        resource: "{{ vtep.interface.id }}"
+        state: present
+        tags:
+          nsx: true
+          'nsx:network': "{{ hostvars['localhost']['hash'] }}"
+          Project: "{{ project }}"
+          Student: "{{ student }}"
+      register: vteptag
+    - name: Set NSX tag on the vTEP interface 2
+      ec2_tag:
+        aws_access_key: "{{ aws_access_key }}"
+        aws_secret_key: "{{ aws_secret_key }}"
+        region: "{{ cmp_vpc_region }}"
+        resource: "{{ vtep2.interface.id }}"
+        state: present
+        tags:
+          nsx: true
+          'nsx:network': "{{ hostvars['localhost']['hash'] }}"
+          Project: "{{ project }}"
+          Student: "{{ student }}"
+      register: vteptag2
+
+    - name: Copy install script 1st VM
+      command: 'scp ../files/install_nsx_vm_agent.sh ubuntu@"{{ instances.instances[0].public_ip }}":'
+      register: cp1
+    - name: Copy install script 2nd VM
+      command: 'scp ../files/install_nsx_vm_agent.sh ubuntu@"{{ instances.instances[1].public_ip }}":'
+      register: cp2
+    - name: Make install script executable 1st VM
+      command: 'ssh ubuntu@"{{ instances.instances[0].public_ip }}" sudo chmod 777 install_nsx_vm_agent.sh'
+      register: cpa1
+    - name: Make install script executable 2nd VM
+      command: 'ssh ubuntu@"{{ instances.instances[1].public_ip }}" sudo chmod 777 install_nsx_vm_agent.sh'
+      register: cpa2
+    - name: Install NSX agent 1st VM
+      command: 'ssh ubuntu@"{{ instances.instances[0].public_ip }}" sudo nohup ./install_nsx_vm_agent.sh  {{ tnode.json.results[0].ip_addresses[0] }} >/dev/null 2>&1 &'
+      register: cpai1
+    - name: Install NSX agent 2nd VM
+      command: 'ssh ubuntu@"{{ instances.instances[0].public_ip }}" sudo nohup ./install_nsx_vm_agent.sh  {{ tnode.json.results[0].ip_addresses[0] }} >/dev/null 2>&1 &'
+      register: cpai2
+
+
+
+

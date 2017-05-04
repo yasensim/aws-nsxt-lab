@@ -59,6 +59,13 @@
       set_fact:
         hash: "{{ sw.json.id }}#{{ hostvars['localhost']['hashtmp'][0] }}"
 #    - debug: msg=" hash {{ hostvars['localhost']['hash'] }}"
+    - name: Get elastic ip for first instance
+      ec2_eip:
+        aws_access_key: "{{ aws_access_key }}"
+        aws_secret_key: "{{ aws_secret_key }}"
+        region: "{{ mng_vpc_region }}"
+      register: eip1
+
     - name: Set NSX tag on the vTEP interface First instance
       ec2_tag:
         aws_access_key: "{{ aws_access_key }}"
@@ -69,9 +76,18 @@
         tags:
           nsx: true
           'nsx:network': "{{ hostvars['localhost']['hash'] }}"
+          'nsx:publicip': "{{ eip1.public_ip }}"
           Project: "{{ project }}"
           Student: "{{ student }}"
       register: vteptag
+
+    - name: Get elastic ip for second instance
+      ec2_eip:
+        aws_access_key: "{{ aws_access_key }}"
+        aws_secret_key: "{{ aws_secret_key }}"
+        region: "{{ mng_vpc_region }}"
+      register: eip2
+
     - name: Set NSX tag on the vTEP interface 2
       ec2_tag:
         aws_access_key: "{{ aws_access_key }}"
@@ -82,6 +98,7 @@
         tags:
           nsx: true
           'nsx:network': "{{ hostvars['localhost']['hash'] }}"
+          'nsx:publicip': "{{ eip2.public_ip }}"
           Project: "{{ project }}"
           Student: "{{ student }}"
       register: vteptag2
@@ -102,9 +119,13 @@
       command: 'ssh ubuntu@"{{ instances.instances[0].public_ip }}" sudo nohup ./install_nsx_vm_agent.sh  {{ tnode.json.results[0].ip_addresses[0] }} >/dev/null 2>&1 &'
       register: cpai1
     - name: Install NSX agent 2nd VM
-      command: 'ssh ubuntu@"{{ instances.instances[0].public_ip }}" sudo nohup ./install_nsx_vm_agent.sh  {{ tnode.json.results[0].ip_addresses[0] }} >/dev/null 2>&1 &'
+      command: 'ssh ubuntu@"{{ instances.instances[1].public_ip }}" sudo nohup ./install_nsx_vm_agent.sh  {{ tnode.json.results[0].ip_addresses[0] }} >/dev/null 2>&1 &'
       register: cpai2
 
-
+    - debug: msg=" You need to wait couple of minutes everything to become operational!!!"
+    - debug: msg=" ssh to instance1 ssh ubuntu@{{ eip1.public_ip }}"
+    - debug: msg=" ssh to instance2 ssh ubuntu@{{ eip2.public_ip }}"
+    - debug: msg=" GUI to NSX Manager https://{{ nsxmaninstance.instances[0].public_ip }}"
+    - debug: msg=" Username admin password {{ nsx_admin_password }}"
 
 

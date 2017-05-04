@@ -1,0 +1,15 @@
+- name: Deploy NSX Infra on AWS
+  hosts: localhost
+  connection: local
+  gather_facts: False
+  vars_files:
+    - ../answerfile.yml
+  tasks:
+    - name: Create Management Security Group
+      ec2_eip:
+        aws_access_key: "{{ aws_access_key }}"
+        aws_secret_key: "{{ aws_secret_key }}"
+        region: "{{ mng_vpc_region }}"
+      register: eip
+eip.public_ip
+

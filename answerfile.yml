@@ -2,7 +2,6 @@
 aws_access_key: "xxxxxxxx"
 aws_secret_key: "xxxxxxxx"
 nsx_admin_password: "VMware1!"
-pcg_admin_password: "VMware!pcg1998"
 student: "FirstStudent"
 project: "HOL-Yasen"
 

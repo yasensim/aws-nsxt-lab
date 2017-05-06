@@ -1,0 +1,123 @@
+---
+- name: Delete NSX Infra on AWS
+  hosts: localhost
+  connection: local
+  gather_facts: False
+  vars_files:
+    - ../answerfile.yml
+  tasks:
+    - name: Get all instance ids
+      ec2_remote_facts:
+        aws_access_key: "{{ aws_access_key }}"
+        aws_secret_key: "{{ aws_secret_key }}"
+        region: "{{ mng_vpc_region }}"
+        filters:
+          "tag:Student": "{{ student }}"
+      register: ins
+    - name: Delete instances
+      ec2:
+        aws_access_key: "{{ aws_access_key }}"
+        aws_secret_key: "{{ aws_secret_key }}"
+        region: "{{ mng_vpc_region }}"
+        state: absent
+        instance_ids: "{{ item.id }}"
+      with_items: "{{ ins.instances }}"
+      register: nsxmaninstance
+
+
+    - name: Check NSX Manager status
+      ec2_remote_facts:
+        aws_access_key: "{{ aws_access_key }}"
+        aws_secret_key: "{{ aws_secret_key }}"
+        region: "{{ mng_vpc_region }}"
+        filters:
+          instance-id: "{{ item.id }}"
+      register: status
+      until: status.instances[0].state == "terminated"
+      retries: 20
+      delay: 30
+      with_items: "{{ ins.instances }}"
+
+
+    - name: Delete Management Security Group
+      ec2_group:
+        aws_access_key: "{{ aws_access_key }}"
+        aws_secret_key: "{{ aws_secret_key }}"
+        region: "{{ mng_vpc_region }}"
+        name: ManagementSecGroup
+        state: absent
+      register: mngmtsg
+
+- name: Delete AWS Infrastructure
+  hosts: localhost
+  connection: local
+  gather_facts: False
+  vars_files:
+    - ../answerfile.yml
+  tasks:
+    - name: Get all VPC ids
+      ec2_vpc_net_facts:
+        aws_access_key: "{{ aws_access_key }}"
+        aws_secret_key: "{{ aws_secret_key }}"
+        region: "{{ mng_vpc_region }}"
+        filters:
+          "tag:Student": "{{ student }}"
+      register: vpc
+
+    - name: Delete IGWs
+      ec2_vpc_igw:
+        aws_access_key: "{{ aws_access_key }}"
+        aws_secret_key: "{{ aws_secret_key }}"
+        region: "{{ mng_vpc_region }}"
+        state: absent
+        vpc_id: "{{ item.id }}"
+      with_items: "{{ vpc.vpcs }}"
+      register: igwstatus
+
+
+    - name: Delete Route Tables
+      ec2_vpc_route_table:
+        aws_access_key: "{{ aws_access_key }}"
+        aws_secret_key: "{{ aws_secret_key }}"
+        vpc_id: "{{ item.id }}"
+        region: "{{ cmp_vpc_region }}"
+        state: absent
+        tags:
+          Project: "{{ project }}"
+          Student: "{{ student }}"
+      with_items: "{{ vpc.vpcs }}"
+      register: cmppublic_rt
+
+    - name: Get all subnet ids
+      ec2_vpc_subnet_facts:
+        aws_access_key: "{{ aws_access_key }}"
+        aws_secret_key: "{{ aws_secret_key }}"
+        region: "{{ mng_vpc_region }}"
+        filters:
+          "tag:Student": "{{ student }}"
+      register: sb
+
+
+    - name: Delete Route Tables
+      ec2_vpc_subnet:
+        aws_access_key: "{{ aws_access_key }}"
+        aws_secret_key: "{{ aws_secret_key }}"
+        region: "{{ mng_vpc_region }}"
+        vpc_id: "{{ item.vpc_id }}"
+        cidr: "{{ item.cidr_block }}"
+      with_items: "{{ sb.subnets }}"
+      register: subnet
+
+    - name: Create Management AWS VPC
+      ec2_vpc_net:
+        aws_access_key: "{{ aws_access_key }}"
+        aws_secret_key: "{{ aws_secret_key }}"
+        region: "{{ mng_vpc_region }}"
+        state:  absent
+        name: "{{ item.tags.Name }}"
+        cidr_block: "{{ item.cidr_block }}"
+        multi_ok: True
+        resource_tags: "{{ item.tags }}"
+      register: mngvpc
+      with_items: "{{ vpc.vpcs }}"
+

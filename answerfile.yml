@@ -1,6 +1,13 @@
 # Variables that can provide as extra vars
-aws_access_key: "xxxxxxxx"
-aws_secret_key: "xxxxxxxx"
+# aws_access_key; and aws_access_key:, If those are set to anything else than False
+# They will be used as the access and secret key for the AWS user
+# If you want to use the access and secret key set by the AWS CLI Tool
+# into ~/.aws/credentials you can set aws_access_key; and aws_access_key: to False
+# To specify the profile to use (aws cli --profile option), set the
+# aws_credentials_profile: to the profile name to be used
+aws_access_key: False
+aws_secret_key: False
+aws_credentials_profile: "ansible"
 nsx_admin_password: "VMware1!"
 student: "FirstStudent"
 project: "HOL-Yasen"
